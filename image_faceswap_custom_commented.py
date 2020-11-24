@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import dlib
 
-SOURCE_PATH = "images/jason.jpg"
-DEST_PATH = "images/brucewills.jpg"
+SOURCE_PATH = "media/images/jason.jpg"
+DEST_PATH = "media/images/brucewills.jpg"
 
 # dlib library's face detector and facial landmark predictor
 frontal_face_detector = dlib.get_frontal_face_detector()
@@ -326,3 +326,4 @@ destination_face_center_point = (int((x+x+w)/2), int((y+y+h)/2))
 seamless_cloned_face = cv2.seamlessClone(destination_with_face, destination_image, final_destination_face_mask, destination_face_center_point, cv2.NORMAL_CLONE)
 cv2.imshow("15: Destination image with source face", seamless_cloned_face)
 cv2.waitKey(0)
+cv2.destroyAllWindows()

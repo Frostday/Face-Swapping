@@ -2,18 +2,16 @@ import cv2
 import numpy as np
 import dlib
 
-SOURCE_PATH = "images/jason.jpg"
-DEST_PATH = "images/brucewills.jpg"
+SOURCE_PATH = "media/images/jason.jpg"
+DEST_PATH = "media/images/brucewills.jpg"
 
 frontal_face_detector = dlib.get_frontal_face_detector()
 frontal_face_predictor = dlib.shape_predictor("dataset/shape_predictor_68_face_landmarks.dat")
 
 source_image = cv2.imread(SOURCE_PATH)
-source_image_copy = source_image.copy()
 source_image_grayscale = cv2.cvtColor(source_image, cv2.COLOR_BGR2GRAY)
 
 destination_image = cv2.imread(DEST_PATH)
-destination_image_copy = destination_image.copy()
 destination_image_grayscale = cv2.cvtColor(destination_image, cv2.COLOR_BGR2GRAY)
 
 source_image_canvas = np.zeros_like(source_image_grayscale)
@@ -31,6 +29,7 @@ def index_from_array(numpyarray):
 
 source_faces = frontal_face_detector(source_image_grayscale)
 
+# Obtaining source face landmark points, convex hull, creating mask and also getting delaunay triangle face landmark indices for every face
 for source_face in source_faces:
     source_face_landmarks = frontal_face_predictor(source_image_grayscale, source_face)
     source_face_landmark_points = []
@@ -41,8 +40,8 @@ for source_face in source_faces:
 
     source_face_landmark_points_array = np.array(source_face_landmark_points, np.int32)
     source_face_convexhull = cv2.convexHull(source_face_landmark_points_array)
+    
     cv2.fillConvexPoly(source_image_canvas, source_face_convexhull, 255)
-
     source_face_image = cv2.bitwise_and(source_image, source_image, mask=source_image_canvas)
 
     # DELAUNAY TRIANGULATION
@@ -53,7 +52,7 @@ for source_face in source_faces:
     triangles_vector = subdivisions.getTriangleList()
     triangles_array = np.array(triangles_vector, dtype=np.int32)
 
-    triangle_index_points_list = []
+    triangle_landmark_points_list = []
     source_face_image_copy = source_face_image.copy()
 
     for triangle in triangles_array:
@@ -69,11 +68,12 @@ for source_face in source_faces:
         index_3 = index_from_array(index_3)
 
         triangle = [index_1, index_2, index_3]
-        triangle_index_points_list.append(triangle)
+        triangle_landmark_points_list.append(triangle)
 
 
 destination_faces = frontal_face_detector(destination_image_grayscale)
 
+# Obtaining destination face landmark points and also convex hull for every face
 for destination_face in destination_faces:
     destination_face_landmarks = frontal_face_predictor(destination_image_grayscale, destination_face)
     destination_face_landmark_points = []
@@ -85,8 +85,10 @@ for destination_face in destination_faces:
     destination_face_landmark_points_array = np.array(destination_face_landmark_points, np.int32)
     destination_face_convexhull = cv2.convexHull(destination_face_landmark_points_array)
 
+# Iterating through all source delaunay triangle and superimposing source triangles in empty destination canvas after warping to same size as destination triangles' shape
+for i, triangle_index_points in enumerate(triangle_landmark_points_list):
+    # Cropping source triangle's bounding rectangle
 
-for i, triangle_index_points in enumerate(triangle_index_points_list):
     source_triangle_point_1 = source_face_landmark_points[triangle_index_points[0]]
     source_triangle_point_2 = source_face_landmark_points[triangle_index_points[1]]
     source_triangle_point_3 = source_face_landmark_points[triangle_index_points[2]]
@@ -101,7 +103,7 @@ for i, triangle_index_points in enumerate(triangle_index_points_list):
                                     [source_triangle_point_3[0]-x, source_triangle_point_3[1]-y]], np.int32)
 
 
-    # Cropping destination triangle and creating a mask
+    # Create a mask using cropped destination triangle's bounding rectangle(for same landmark points as used for source triangle)
 
     destination_triangle_point_1 = destination_face_landmark_points[triangle_index_points[0]]
     destination_triangle_point_2 = destination_face_landmark_points[triangle_index_points[1]]
@@ -119,7 +121,7 @@ for i, triangle_index_points in enumerate(triangle_index_points_list):
 
     cv2.fillConvexPoly(cropped_destination_rectangle_mask, destination_triangle_points, 255)
     
-    # Warp source triangle to match shape of destination triangle
+    # Warp source triangle to match shape of destination triangle and put it over destination triangle mask
 
     source_triangle_points = np.float32(source_triangle_points)
     destination_triangle_points = np.float32(destination_triangle_points)
@@ -147,12 +149,12 @@ final_destination_canvas = cv2.bitwise_not(final_destination_face_mask)
 destination_face_masked = cv2.bitwise_and(destination_image, destination_image, mask=final_destination_canvas)
 destination_with_face = cv2.add(destination_face_masked, destination_image_canvas)
 
-
 # Seamless cloning to make attachment blend with surrounding pixels
 
-# we have to find center point of reconstructed convex hull
+# we have to find center point of reconstructed convex hull to pass into seamlessClone()
 (x, y, w, h) = cv2.boundingRect(destination_face_convexhull)
 destination_face_center_point = (int((x+x+w)/2), int((y+y+h)/2))
 seamless_cloned_face = cv2.seamlessClone(destination_with_face, destination_image, final_destination_face_mask, destination_face_center_point, cv2.NORMAL_CLONE)
 cv2.imshow("Destination image with source face", seamless_cloned_face)
 cv2.waitKey(0)
+cv2.destroyAllWindows()
