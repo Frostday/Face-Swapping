@@ -161,7 +161,6 @@ for destination_face in destination_faces:
         x_point = destination_face_landmarks.part(landmark_no).x
         y_point = destination_face_landmarks.part(landmark_no).y
         destination_face_landmark_points.append((x_point, y_point))
-        # DEMO 3 - showing all landmark points on image
         cv2.circle(destination_image, (x_point, y_point), 2, (255, 0, 0), -1)
         cv2.putText(destination_image, str(landmark_no), (x_point,
                     y_point), cv2.FONT_HERSHEY_SIMPLEX, .2, (255, 255, 255))
